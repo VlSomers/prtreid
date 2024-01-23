@@ -285,23 +285,25 @@ class Dataset(object):
                 raise RuntimeError('"{}" is not found'.format(fpath))
 
     def __repr__(self):
-        num_train_pids, num_train_cams = self.parse_data(self.train)
-        num_query_pids, num_query_cams = self.parse_data(self.query)
-        num_gallery_pids, num_gallery_cams = self.parse_data(self.gallery)
+        try:
+            num_train_pids, num_train_cams = self.parse_data(self.train)
+            num_query_pids, num_query_cams = self.parse_data(self.query)
+            num_gallery_pids, num_gallery_cams = self.parse_data(self.gallery)
 
-        msg = '  ----------------------------------------\n' \
-              '  subset   | # ids | # items | # cameras\n' \
-              '  ----------------------------------------\n' \
-              '  train    | {:5d} | {:7d} | {:9d}\n' \
-              '  query    | {:5d} | {:7d} | {:9d}\n' \
-              '  gallery  | {:5d} | {:7d} | {:9d}\n' \
-              '  ----------------------------------------\n' \
-              '  items: images/tracklets for image/video dataset\n'.format(
-                  num_train_pids, len(self.train), num_train_cams,
-                  num_query_pids, len(self.query), num_query_cams,
-                  num_gallery_pids, len(self.gallery), num_gallery_cams
-              )
-
+            msg = '  ----------------------------------------\n' \
+                  '  subset   | # ids | # items | # cameras\n' \
+                  '  ----------------------------------------\n' \
+                  '  train    | {:5d} | {:7d} | {:9d}\n' \
+                  '  query    | {:5d} | {:7d} | {:9d}\n' \
+                  '  gallery  | {:5d} | {:7d} | {:9d}\n' \
+                  '  ----------------------------------------\n' \
+                  '  items: images/tracklets for image/video dataset\n'.format(
+                      num_train_pids, len(self.train), num_train_cams,
+                      num_query_pids, len(self.query), num_query_cams,
+                      num_gallery_pids, len(self.gallery), num_gallery_cams
+                  )
+        except:
+            msg = "Non initialized dataset"
         return msg
 
 
@@ -337,6 +339,7 @@ class ImageDataset(Dataset):
                 transf_args["mask"] = np.ones((1, 2, 2))
             else:
                 pass
+        
         result = self.transforms(mode)(**transf_args)
         sample.update(result)
         return sample

@@ -2,6 +2,7 @@ import torch
 from torch import nn
 from albumentations import DualTransform
 import torch.nn.functional as F
+import numpy as np
 
 
 class MaskTransform(DualTransform):
@@ -29,18 +30,29 @@ class MaskGroupingTransform(MaskTransform):
         self.combine_mode = combine_mode
 
     def apply_to_mask(self, masks, **params):
-        parts_masks = []
-        for i, part in enumerate(self.parts_names):
-            if self.combine_mode == 'sum':
-                parts_masks.append(masks[[self.parts_map[k] for k in self.parts_grouping[part]]].sum(dim=0).clamp(0, 1))
-            else:
-                parts_masks.append(masks[[self.parts_map[k] for k in self.parts_grouping[part]]].max(dim=0)[0].clamp(0, 1))
-        return torch.stack(parts_masks)
-
-
+        if type(masks) is np.ndarray:  # parts num is last dimension when called as first transform after mask loading
+            parts_masks = []
+            for i, part in enumerate(self.parts_names):
+                if self.combine_mode == 'sum':
+                    parts_masks.append(masks[:, :, [self.parts_map[k] for k in self.parts_grouping[part]]].sum(axis=2).clip(0, 1))
+                else:
+                    parts_masks.append(masks[:, :, [self.parts_map[k] for k in self.parts_grouping[part]]].max(axis=2).clip(0, 1))
+            return np.stack(parts_masks, axis=2)
+        else:  # parts num is first dimension
+            parts_masks = []
+            for i, part in enumerate(self.parts_names):
+                if self.combine_mode == 'sum':
+                    parts_masks.append(masks[[self.parts_map[k] for k in self.parts_grouping[part]]].sum(dim=0).clamp(0, 1))
+                else:
+                    parts_masks.append(masks[[self.parts_map[k] for k in self.parts_grouping[part]]].max(dim=0)[0].clamp(0, 1))
+            return torch.stack(parts_masks)
+        
 class PermuteMasksDim(MaskTransform):
     def apply_to_mask(self, masks, **params):
-        return masks.permute(2, 0, 1)
+        if type(masks) is np.ndarray:  # parts num is last dimension when called as first transform after mask loading
+            return masks.transpose(2, 0, 1)
+        else:  # parts num is first dimension
+            return masks.permute(2, 0, 1)
 
 
 class ResizeMasks(MaskTransform):
@@ -88,5 +100,9 @@ class AddBackgroundMask(MaskTransform):
 class IdentityMask(MaskTransform):
     parts_names = ['id']
     parts_num = 1
+
     def apply_to_mask(self, masks, **params):
-        return torch.ones((1, masks.shape[1], masks.shape[2]))
+        if type(masks) is np.ndarray:  # parts num is last dimension when called as first transform after mask loading
+            return np.ones((masks.shape[1], masks.shape[2], 1))
+        else:  # parts num is first dimension
+            return torch.ones((1, masks.shape[1], masks.shape[2]))

@@ -84,22 +84,22 @@ def cosine_distance(input1, input2):
     return distmat
 
 
-def compute_distance_matrix_using_bp_features(qf, gf, qf_parts_visibility=None, gf_parts_visibility=None, dist_combine_strat='mean', batch_size_pairwise_dist_matrix=5000, use_gpu=False, metric='euclidean'):
+def compute_distance_matrix_using_bp_features(qf, gf, qf_parts_visibility=None, gf_parts_visibility=None, dist_combine_strat='mean', batch_size_pairwise_dist_matrix=5000, use_gpu=False, metric='euclidean', use_logger=True):
     """Computes distance matrix between each pair of samples using their part-based features. 3 implementations here: without visibility scores, with boolean/binary visibility scores and with continuous [0, 1] visibility scores."""
     # TODO keep only one generic implementation
     if qf_parts_visibility is not None and gf_parts_visibility is not None:
         if qf_parts_visibility.dtype is torch.bool and gf_parts_visibility.dtype is torch.bool:
             # boolean visibility scores
-            return _compute_distance_matrix_using_bp_features_and_masks(qf, gf, qf_parts_visibility, gf_parts_visibility, dist_combine_strat, batch_size_pairwise_dist_matrix, use_gpu, metric)
+            return _compute_distance_matrix_using_bp_features_and_masks(qf, gf, qf_parts_visibility, gf_parts_visibility, dist_combine_strat, batch_size_pairwise_dist_matrix, use_gpu, metric, use_logger)
         else:
             # continuous visibility scores
-            return _compute_distance_matrix_using_bp_features_and_visibility_scores(qf, gf, qf_parts_visibility, gf_parts_visibility, dist_combine_strat, batch_size_pairwise_dist_matrix, use_gpu, metric)
+            return _compute_distance_matrix_using_bp_features_and_visibility_scores(qf, gf, qf_parts_visibility, gf_parts_visibility, dist_combine_strat, batch_size_pairwise_dist_matrix, use_gpu, metric, use_logger)
     else:
         # no visibility scores
-        return _compute_distance_matrix_using_bp_features(qf, gf, dist_combine_strat, batch_size_pairwise_dist_matrix, use_gpu, metric)
+        return _compute_distance_matrix_using_bp_features(qf, gf, dist_combine_strat, batch_size_pairwise_dist_matrix, use_gpu, metric, use_logger)
 
 
-def _compute_distance_matrix_using_bp_features(qf, gf, dist_combine_strat, batch_size_pairwise_dist_matrix, use_gpu, metric):
+def _compute_distance_matrix_using_bp_features(qf, gf, dist_combine_strat, batch_size_pairwise_dist_matrix, use_gpu, metric, use_logger=True):
     if use_gpu:
         qf = qf.cuda()
 
@@ -123,11 +123,13 @@ def _compute_distance_matrix_using_bp_features(qf, gf, dist_combine_strat, batch
     pairwise_dist = torch.cat(pairwise_dist_, 1)
     body_part_pairwise_dist = torch.cat(body_part_pairwise_dist_, 2)
 
-    Writer.current_writer().qg_pairwise_dist_statistics(pairwise_dist, body_part_pairwise_dist, None, None)
+    if Writer.current_writer() is not None and use_logger:
+        Writer.current_writer().qg_pairwise_dist_statistics(pairwise_dist, body_part_pairwise_dist, None, None)
 
     return pairwise_dist, body_part_pairwise_dist
 
-def _compute_distance_matrix_using_bp_features_and_masks(qf, gf, qf_parts_visibility, gf_parts_visibility, dist_combine_strat, batch_size_pairwise_dist_matrix, use_gpu, metric):
+
+def _compute_distance_matrix_using_bp_features_and_masks(qf, gf, qf_parts_visibility, gf_parts_visibility, dist_combine_strat, batch_size_pairwise_dist_matrix, use_gpu, metric, use_logger=True):
     batch_gf_list = torch.split(gf, batch_size_pairwise_dist_matrix)
     batch_gf_parts_visibility_list = torch.split(gf_parts_visibility, batch_size_pairwise_dist_matrix)
 
@@ -166,7 +168,8 @@ def _compute_distance_matrix_using_bp_features_and_masks(qf, gf, qf_parts_visibi
     pairwise_dist = torch.cat(pairwise_dist_, 1)
     body_part_pairwise_dist = torch.cat(body_part_pairwise_dist_, 2)
 
-    Writer.current_writer().qg_pairwise_dist_statistics(pairwise_dist, body_part_pairwise_dist, qf_parts_visibility_cpu, gf_parts_visibility)
+    if Writer.current_writer() is not None and use_logger:
+        Writer.current_writer().qg_pairwise_dist_statistics(pairwise_dist, body_part_pairwise_dist, qf_parts_visibility_cpu, gf_parts_visibility)
 
     max_value = body_part_pairwise_dist.max() + 1 # FIXME not clean with cosine dist
     valid_pairwise_dist_mask = (pairwise_dist != float(-1))
@@ -176,7 +179,7 @@ def _compute_distance_matrix_using_bp_features_and_masks(qf, gf, qf_parts_visibi
     return pairwise_dist, body_part_pairwise_dist
 
 
-def _compute_distance_matrix_using_bp_features_and_visibility_scores(qf, gf, qf_parts_visibility, gf_parts_visibility, dist_combine_strat, batch_size_pairwise_dist_matrix, use_gpu, metric):
+def _compute_distance_matrix_using_bp_features_and_visibility_scores(qf, gf, qf_parts_visibility, gf_parts_visibility, dist_combine_strat, batch_size_pairwise_dist_matrix, use_gpu, metric, use_logger=True):
     batch_gf_list = torch.split(gf, batch_size_pairwise_dist_matrix)
     batch_gf_parts_visibility_list = torch.split(gf_parts_visibility, batch_size_pairwise_dist_matrix)
 
@@ -207,7 +210,7 @@ def _compute_distance_matrix_using_bp_features_and_visibility_scores(qf, gf, qf_
     body_part_pairwise_dist = torch.cat(body_part_pairwise_dist_, 2)
 
     # TODO check if still valid:
-    if Writer.current_writer() is not None:
+    if Writer.current_writer() is not None and use_logger:
         Writer.current_writer().qg_pairwise_dist_statistics(pairwise_dist, body_part_pairwise_dist, qf_parts_visibility_cpu, gf_parts_visibility)
 
     max_value = body_part_pairwise_dist.max() + 1
@@ -219,10 +222,10 @@ def _compute_distance_matrix_using_bp_features_and_visibility_scores(qf, gf, qf_
 
 def _compute_body_parts_dist_matrices(qf, gf, metric='euclidean'):
     """
-    gf, qf shapes = (N, M, C)
+    gf, qf shapes = (N, K, C)
     ||a-b||^2 = |a|^2 - 2*<a,b> + |b|^2
     """
-    if metric == 'euclidean':
+    if metric == 'euclidean':  # if features are normalized, should return distance between 0 and 2
         qf = qf.transpose(1, 0)
         gf = gf.transpose(1, 0)
         dot_product = torch.matmul(qf, gf.transpose(2, 1))

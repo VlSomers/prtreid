@@ -38,8 +38,8 @@ def compute_distance_distribution(ax, distmat, q_pids, g_pids, title):
 
     pos_p_mean, pos_p_std, neg_p_mean, neg_p_std, ssmd = compute_ssmd(neg_p, pos_p)
 
-    # plot_distributions(ax, neg_p, pos_p, pos_p_mean, pos_p_std, neg_p_mean, neg_p_std)
-    # ax.set_title(title + " - SSMD = {:.4f} ".format(ssmd))
+    plot_distributions(ax, neg_p, pos_p, pos_p_mean, pos_p_std, neg_p_mean, neg_p_std)
+    ax.set_title(title + " - SSMD = {:.4f} ".format(ssmd))
 
     return pos_p_mean, pos_p_std, neg_p_mean, neg_p_std, ssmd
 

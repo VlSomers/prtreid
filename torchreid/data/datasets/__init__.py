@@ -4,9 +4,11 @@ import copy
 
 from .image import (
     GRID, PRID, CUHK01, CUHK02, CUHK03, MSMT17, VIPeR, SenseReID, Market1501,
-    DukeMTMCreID, iLIDS, OccludedDuke, OccludedReID, Partial_iLIDS, Partial_REID, PDukemtmcReid,
-    P_ETHZ
+    DukeMTMCreID, iLIDS, Synergy, EpflSport, OccludedDuke, OccludedReID, Partial_iLIDS, Partial_REID, PDukemtmcReid,
+    P_ETHZ, SynergySequences, Dartfish, SoccerNet
 )
+from .image.de_challenge_synergy import DEChallengeSynergy
+from .image.motchallenge import get_sequence_class, MOTChallenge
 from .video import PRID2011, Mars, DukeMTMCVidReID, iLIDSVID
 from .dataset import Dataset, ImageDataset, VideoDataset
 
@@ -22,12 +24,25 @@ __image_datasets = {
     'sensereid': SenseReID,
     'prid': PRID,
     'cuhk02': CUHK02,
+    'synergy': Synergy,
     'occluded_duke': OccludedDuke,
     'occluded_reid': OccludedReID,
     'partial_reid': Partial_REID,
     'partial_ilids': Partial_iLIDS,
     'p_ETHZ': P_ETHZ,
     'p_dukemtmc_reid': PDukemtmcReid,
+    'epflsport': EpflSport,
+    'synergy_sequences': SynergySequences,
+    'de_challenge_synergy': DEChallengeSynergy,
+    'dartfish': Dartfish,
+    'MOTChallenge': MOTChallenge,
+    'MOT17-02': get_sequence_class('MOT17-02-FRCNN'),
+    'MOT17-04': get_sequence_class('MOT17-04-FRCNN'),
+    'MOT17-05': get_sequence_class('MOT17-05-FRCNN'),
+    'MOT17-09': get_sequence_class('MOT17-09-FRCNN'),
+    'MOT17-10': get_sequence_class('MOT17-10-FRCNN'),
+    'MOT17-11': get_sequence_class('MOT17-11-FRCNN'),
+    'MOT17-13': get_sequence_class('MOT17-13-FRCNN'),
 }
 
 __datasets_nicknames = {
@@ -42,12 +57,24 @@ __datasets_nicknames = {
     'sensereid': 'se',
     'prid': 'pr',
     'cuhk02': 'c02',
+    'synergy': 'sy',
     'occluded_duke': 'od',
     'occluded_reid': 'or',
     'partial_reid': 'pr',
     'partial_ilids': 'pi',
     'p_ETHZ': 'pz',
     'p_dukemtmc_reid': 'pd',
+    'epflsport': 'epfl',
+    'synergy_sequences': 'ss',
+    'de_challenge_synergy': 'dec',
+    'dartfish': 'df',
+    'MOT17-02': 'mc2',
+    'MOT17-04': 'mc4',
+    'MOT17-05': 'mc5',
+    'MOT17-09': 'mc9',
+    'MOT17-10': 'mc10',
+    'MOT17-11': 'mc11',
+    'MOT17-13': 'mc13',
 }
 
 __video_datasets = {

@@ -15,13 +15,17 @@ __all__ = [
 class BPBreID(nn.Module):
     """Posed based feature extraction network
     """
-    def __init__(self, num_classes, pretrained, loss, model_cfg, horizontal_stripes=False, **kwargs):
+    def __init__(self, num_classes, pretrained, loss, model_cfg, horizontal_stripes=False, num_teams=6, num_roles=4, **kwargs):
         super(BPBreID, self).__init__()
 
         # Init config
         self.model_cfg = model_cfg
         # number of training classes/identities
         self.num_classes = num_classes
+        # number of training teams
+        self.num_teams = num_teams
+        # number of roles in dataset
+        self.num_roles = num_roles
         # number of parts K
         self.parts_num = self.model_cfg.masks.parts_num
         # whether to perform horizontal stripes pooling similar to PCB
@@ -80,7 +84,43 @@ class BPBreID(nn.Module):
                     for _ in range(self.parts_num)
                 ]
             )
-
+            
+        # Init team classifier
+        self.global_team_classifier = BNClassifier(self.dim_reduce_output, self.num_teams)
+        self.background_team_classifier = BNClassifier(self.dim_reduce_output, self.num_teams)
+        self.foreground_team_classifier = BNClassifier(self.dim_reduce_output, self.num_teams)
+        self.concat_parts_team_classifier = BNClassifier(self.parts_num * self.dim_reduce_output, self.num_teams)
+        if self.shared_parts_id_classifier:
+            # the same identity classifier weights are used for each part branch
+            self.parts_team_classifier = BNClassifier(self.dim_reduce_output, self.num_teams)
+        else:
+            # each part branch has its own identity classifier
+            self.parts_team_classifier = nn.ModuleList(
+                [
+                    BNClassifier(self.dim_reduce_output, self.num_teams)
+                    for _ in range(self.parts_num)
+                ]
+            )
+            
+        ##########################################################################################################################################
+        # Init Role classifier
+        #self.global_Role_classifier = BNClassifier(self.dim_reduce_output, self.num_roles)
+        #self.background_Role_classifier = BNClassifier(self.dim_reduce_output, self.num_roles)
+        self.foreground_Role_classifier = BNClassifier(self.dim_reduce_output, self.num_roles)
+        #self.concat_parts_Role_classifier = BNClassifier(self.parts_num * self.dim_reduce_output, self.num_roles)
+        if self.shared_parts_id_classifier:
+            # the same identity classifier weights are used for each part branch
+            self.parts_Role_classifier = BNClassifier(self.dim_reduce_output, self.num_roles)
+        else:
+            # each part branch has its own identity classifier
+            self.parts_Role_classifier = nn.ModuleList(
+                [
+                    BNClassifier(self.dim_reduce_output, self.num_roles)
+                    for _ in range(self.num_roles)
+                ]
+            )
+        ##########################################################################################################################################
+            
     def init_dim_reduce_layers(self, dim_reduce_mode, spatial_feature_size, dim_reduce_output):
         self.dim_reduce_output = dim_reduce_output
         self.after_pooling_dim_reduce = False
@@ -212,12 +252,28 @@ class BPBreID(nn.Module):
         concat_parts_embeddings = parts_embeddings.flatten(1, 2)  # [N, K*D]
 
         # Identity classification scores
-        bn_global_embeddings, global_cls_score = self.global_identity_classifier(global_embeddings)  # [N, D], [N, num_classes]
-        bn_background_embeddings, background_cls_score = self.background_identity_classifier(background_embeddings)  # [N, D], [N, num_classes]
-        bn_foreground_embeddings, foreground_cls_score = self.foreground_identity_classifier(foreground_embeddings)  # [N, D], [N, num_classes]
-        bn_concat_parts_embeddings, concat_parts_cls_score = self.concat_parts_identity_classifier(concat_parts_embeddings)  # [N, K*D], [N, num_classes]
-        bn_parts_embeddings, parts_cls_score = self.parts_identity_classification(self.dim_reduce_output, N, parts_embeddings)  # [N, K, D], [N, K, num_classes]
+        id_bn_global_embeddings, id_global_cls_score = self.global_identity_classifier(global_embeddings)  # [N, D], [N, num_classes]
+        id_bn_background_embeddings, id_background_cls_score = self.background_identity_classifier(background_embeddings)  # [N, D], [N, num_classes]
+        id_bn_foreground_embeddings, id_foreground_cls_score = self.foreground_identity_classifier(foreground_embeddings)  # [N, D], [N, num_classes]
+        id_bn_concat_parts_embeddings, id_concat_parts_cls_score = self.concat_parts_identity_classifier(concat_parts_embeddings)  # [N, K*D], [N, num_classes]
+        id_bn_parts_embeddings, id_parts_cls_score = self.parts_identity_classification(self.dim_reduce_output, N, parts_embeddings)  # [N, K, D], [N, K, num_classes]
 
+        # Team classification scores
+        team_bn_global_embeddings, team_global_cls_score = self.global_team_classifier(global_embeddings)  # [N, D], [N, num_classes]
+        team_bn_background_embeddings, team_background_cls_score = self.background_team_classifier(background_embeddings)  # [N, D], [N, num_classes]
+        team_bn_foreground_embeddings, team_foreground_cls_score = self.foreground_team_classifier(foreground_embeddings)  # [N, D], [N, num_classes]
+        team_bn_concat_parts_embeddings, team_concat_parts_cls_score = self.concat_parts_team_classifier(concat_parts_embeddings)  # [N, K*D], [N, num_classes]
+        team_bn_parts_embeddings, team_parts_cls_score = self.parts_identity_classification(self.dim_reduce_output, N, parts_embeddings)  # [N, K, D], [N, K, num_classes]
+        
+        ##########################################################################################################################################
+        # Role classification scores
+        #Role_bn_global_embeddings, Role_global_cls_score = self.global_Role_classifier(global_embeddings)  # [N, D], [N, num_classes]
+        #Role_bn_background_embeddings, Role_background_cls_score = self.background_Role_classifier(background_embeddings)  # [N, D], [N, num_classes]
+        Role_bn_foreground_embeddings, Role_foreground_cls_score = self.foreground_Role_classifier(foreground_embeddings)  # [N, D], [N, num_classes]
+        #Role_bn_concat_parts_embeddings, Role_concat_parts_cls_score = self.concat_parts_Role_classifier(concat_parts_embeddings)  # [N, K*D], [N, num_classes]
+        #Role_bn_parts_embeddings, Role_parts_cls_score = self.parts_identity_classification(self.dim_reduce_output, N, parts_embeddings)  # [N, K, D], [N, K, num_classes]
+        ##########################################################################################################################################
+        
         # Outputs
         embeddings = {
             GLOBAL: global_embeddings,  # [N, D]
@@ -225,11 +281,11 @@ class BPBreID(nn.Module):
             FOREGROUND: foreground_embeddings,  # [N, D]
             CONCAT_PARTS: concat_parts_embeddings,  # [N, K*D]
             PARTS: parts_embeddings,  # [N, K, D]
-            BN_GLOBAL: bn_global_embeddings,  # [N, D]
-            BN_BACKGROUND: bn_background_embeddings,  # [N, D]
-            BN_FOREGROUND: bn_foreground_embeddings,  # [N, D]
-            BN_CONCAT_PARTS: bn_concat_parts_embeddings,  # [N, K*D]
-            BN_PARTS: bn_parts_embeddings,  #  [N, K, D]
+            BN_GLOBAL: id_bn_global_embeddings,  # [N, D]
+            BN_BACKGROUND: id_bn_background_embeddings,  # [N, D]
+            BN_FOREGROUND: id_bn_foreground_embeddings,  # [N, D]
+            BN_CONCAT_PARTS: id_bn_concat_parts_embeddings,  # [N, K*D]
+            BN_PARTS: id_bn_parts_embeddings,  #  [N, K, D]
         }
 
         visibility_scores = {
@@ -241,13 +297,31 @@ class BPBreID(nn.Module):
         }
 
         id_cls_scores = {
-            GLOBAL: global_cls_score,  # [N, num_classes]
-            BACKGROUND: background_cls_score,  # [N, num_classes]
-            FOREGROUND: foreground_cls_score,  # [N, num_classes]
-            CONCAT_PARTS: concat_parts_cls_score,  # [N, num_classes]
-            PARTS: parts_cls_score,  # [N, K, num_classes]
+            GLOBAL: id_global_cls_score,  # [N, num_classes]
+            BACKGROUND: id_background_cls_score,  # [N, num_classes]
+            FOREGROUND: id_foreground_cls_score,  # [N, num_classes]
+            CONCAT_PARTS: id_concat_parts_cls_score,  # [N, num_classes]
+            PARTS: id_parts_cls_score,  # [N, K, num_classes]
         }
-
+        
+        team_cls_scores = {
+            GLOBAL: team_global_cls_score,  # [N, num_classes]
+            BACKGROUND: team_background_cls_score,  # [N, num_classes]
+            FOREGROUND: team_foreground_cls_score,  # [N, num_classes]
+            CONCAT_PARTS: team_concat_parts_cls_score,  # [N, num_classes]
+            PARTS: team_parts_cls_score,  # [N, K, num_classes]
+        }
+        
+        ##########################################################################################################################################
+        Role_cls_scores = {
+            #GLOBAL: Role_global_cls_score,  # [N, num_classes]
+           # BACKGROUND: Role_background_cls_score,  # [N, num_classes]
+            FOREGROUND: Role_foreground_cls_score,  # [N, num_classes]
+            #CONCAT_PARTS: Role_concat_parts_cls_score,  # [N, num_classes]
+           # PARTS: Role_parts_cls_score,  # [N, K, num_classes]
+        }
+        ##########################################################################################################################################
+        
         masks = {
             GLOBAL: global_masks,  # [N, Hf, Wf]
             BACKGROUND: background_masks,  # [N, Hf, Wf]
@@ -256,7 +330,7 @@ class BPBreID(nn.Module):
             PARTS: parts_masks,  # [N, K, Hf, Wf]
         }
 
-        return embeddings, visibility_scores, id_cls_scores, pixels_cls_scores, spatial_features, masks
+        return embeddings, visibility_scores, id_cls_scores, team_cls_scores, Role_cls_scores, pixels_cls_scores, spatial_features, masks
 
     def parts_identity_classification(self, D, N, parts_embeddings):
         if self.shared_parts_id_classifier:

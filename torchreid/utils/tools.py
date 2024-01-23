@@ -11,13 +11,14 @@ import os.path as osp
 import warnings
 import PIL
 import torch
-from PIL import Image
 from torchreid.utils.constants import bn_correspondants
+from functools import lru_cache
 
 __all__ = [
     'mkdir_if_missing', 'check_isfile', 'read_json', 'write_json',
     'set_random_seed', 'download_url', 'read_image', 'read_masks', 'collect_env_info', 'perc'
 ]
+
 
 
 def mkdir_if_missing(dirname):
@@ -95,7 +96,7 @@ def download_url(url, dst):
     urllib.request.urlretrieve(url, dst, _reporthook)
     sys.stdout.write('\n')
 
-
+@lru_cache(maxsize=None)
 def read_image(path):
     """Reads image from path using ``PIL.Image``.
 
@@ -120,7 +121,7 @@ def read_image(path):
             )
     return img
 
-
+@lru_cache(maxsize=None)
 def read_masks(masks_path):
     """Reads part-based masks information from path.
 
@@ -161,8 +162,9 @@ def collect_env_info():
 def perc(val, decimals=2):
     return np.around(val*100, decimals)
 
+
 def extract_test_embeddings(model_output, test_embeddings):
-    embeddings, visibility_scores, id_cls_scores, pixels_cls_scores, spatial_features, parts_masks = model_output
+    embeddings, visibility_scores, id_cls_scores, team_cls_score, role_cls_score, pixels_cls_scores, spatial_features, parts_masks = model_output
     embeddings_list = []
     visibility_scores_list = []
     embeddings_masks_list = []
@@ -183,5 +185,4 @@ def extract_test_embeddings(model_output, test_embeddings):
     visibility_scores = torch.cat(visibility_scores_list, dim=1)  # [N, P+2]
     embeddings_masks = torch.cat(embeddings_masks_list, dim=1)  # [N, P+2, Hf, Wf]
 
-    return embeddings, visibility_scores, embeddings_masks, pixels_cls_scores
-
+    return embeddings, visibility_scores, embeddings_masks, pixels_cls_scores, role_cls_score

@@ -1,4 +1,6 @@
+import cv2
 import numpy as np
+from collections import OrderedDict
 from scipy import signal
 
 
@@ -21,7 +23,7 @@ def build_gaussian_heatmaps(kp_xyc, w, h, gaussian=None):
         kpx, kpy = kp[:2].astype(int)
 
         if gaussian is None:
-            g_scale = 6
+            g_scale = 8
             g_radius = int(w / g_scale)
             gaussian = gkern(g_radius * 2 + 1)
         else:
@@ -34,3 +36,81 @@ def build_gaussian_heatmaps(kp_xyc, w, h, gaussian=None):
                                                                              g_radius - rt:g_radius + rb + 1,
                                                                              g_radius - rl:g_radius + rr + 1]
     return gaussian_heatmaps
+
+joints_dict = OrderedDict()
+joints_dict['head'] = ['nose', 'head_bottom', 'head_top', 'left_ear', 'right_ear']
+joints_dict['torso'] = ['left_shoulder', 'right_shoulder', 'left_hip', 'right_hip', 'head_bottom']
+# arms
+joints_dict['right_upperarm'] = ['right_shoulder', 'right_elbow']
+joints_dict['left_upperarm'] = ['left_shoulder', 'left_elbow']
+joints_dict['right_forearm'] = ['right_elbow', 'right_wrist']
+joints_dict['left_forearm'] = ['left_elbow', 'left_wrist']
+# legs
+joints_dict['right_femur'] = ['right_hip', 'right_knee']
+joints_dict['left_femur'] = ['left_hip', 'left_knee']
+joints_dict['right_tibia'] = ['right_knee', 'right_ankle']
+joints_dict['left_tibia'] = ['left_knee', 'left_ankle']
+
+joints_radius = {
+    'head': 3,
+    'torso': 3,
+    'right_upperarm': 2,
+    'left_upperarm': 2,
+    'right_forearm': 2,
+    'left_forearm': 2,
+    'right_femur': 3,
+    'left_femur': 3,
+    'right_tibia': 2,
+    'left_tibia': 2,
+}
+
+keypoints_dict = {
+    'nose': 0,
+    'head_bottom': 1,
+    'head_top': 2,
+    'left_ear': 3,
+    'right_ear': 4,
+    'left_shoulder': 5,
+    'right_shoulder': 6,
+    'left_elbow': 7,
+    'right_elbow': 8,
+    'left_wrist': 9,
+    'right_wrist': 10,
+    'left_hip': 11,
+    'right_hip': 12,
+    'left_knee': 13,
+    'right_knee': 14,
+    'left_ankle': 15,
+    'right_ankle': 16,
+}
+
+
+def build_gaussian_body_part_heatmaps(kp_xyc, w, h):
+    gaussian_heatmaps = np.zeros((len(joints_dict.keys()), h, w))
+
+    for i, (joint, keypoints) in enumerate(joints_dict.items()):
+        kp_indices = [keypoints_dict[kp] for kp in keypoints]
+        joint_kp_xyc = kp_xyc[kp_indices]
+        heatmap = gaussian_heatmaps[i]
+        for kp in joint_kp_xyc:
+            if kp[2] > 0:
+                cv2.circle(heatmap, kp[0:2].astype(np.int), radius=joints_radius[joint], color=1, thickness=-1)
+        if joint_kp_xyc[:, 2].max() != 0:
+            kp_contours = np.array([kp[0:2].astype(np.int) for kp in joint_kp_xyc if kp[2] > 0])
+            cv2.drawContours(heatmap, [kp_contours], contourIdx=-1, color=1, thickness=-1)
+            contours, hierarchy = cv2.findContours(np.uint8(heatmap), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+            main_contour = contours[0]
+            convexHull = cv2.convexHull(main_contour)
+            cv2.drawContours(heatmap, [convexHull], contourIdx=-1, color=1, thickness=-1)
+
+    return gaussian_heatmaps
+
+
+def keypoints_to_body_part_visibility_scores(kp_xyc):
+    visibility_scores = []
+    for i, (joint, keypoints) in enumerate(joints_dict.items()):
+        kp_indices = [keypoints_dict[kp] for kp in keypoints]
+        joint_kp_xyc = kp_xyc[kp_indices]
+        visibility_scores.append(joint_kp_xyc[:, 2].mean())
+
+    return np.array(visibility_scores)
