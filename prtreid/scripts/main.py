@@ -230,15 +230,17 @@ def build_torchreid_model_engine(cfg):
     logger = Logger(cfg)
     writer = Writer(cfg)
     set_random_seed(cfg.train.seed)
-    print('Show configuration\n{}\n'.format(cfg))
-    print('Collecting env info ...')
-    print('** System info **\n{}\n'.format(collect_env_info()))
+    if cfg.project.verbose:
+        print('Show configuration\n{}\n'.format(cfg))
+        print('Collecting env info ...')
+        print('** System info **\n{}\n'.format(collect_env_info()))
     if cfg.use_gpu:
         torch.backends.cudnn.benchmark = True
     datamanager = build_datamanager(cfg)
     engine_state = EngineState(cfg.train.start_epoch, cfg.train.max_epoch)
     writer.init_engine_state(engine_state, cfg.model.bpbreid.masks.parts_num)
-    print('Building model: {}'.format(cfg.model.name))
+    if cfg.project.verbose:
+        print('Building model: {}'.format(cfg.model.name))
     model = prtreid.models.build_model(
         name=cfg.model.name,
         num_classes=datamanager.num_train_pids,
@@ -251,7 +253,8 @@ def build_torchreid_model_engine(cfg):
     num_params, flops = compute_model_complexity(
         model, cfg
     )
-    print('Model complexity: params={:,} flops={:,}'.format(num_params, flops))
+    if cfg.project.verbose:
+        print('Model complexity: params={:,} flops={:,}'.format(num_params, flops))
     if cfg.model.load_weights and check_isfile(cfg.model.load_weights):
         load_pretrained_weights(model, cfg.model.load_weights)
     if cfg.use_gpu:
@@ -264,9 +267,8 @@ def build_torchreid_model_engine(cfg):
         cfg.train.start_epoch = resume_from_checkpoint(
             cfg.model.resume, model, optimizer=optimizer, scheduler=scheduler
         )
-    print(
-        'Building {}-engine for {}-reid'.format(cfg.loss.name, cfg.data.type)
-    )
+    if cfg.project.verbose:
+        print('Building {}-engine for {}-reid'.format(cfg.loss.name, cfg.data.type))
     engine = build_engine(cfg, datamanager, model, optimizer, scheduler, writer, engine_state)
     return engine, model
 
