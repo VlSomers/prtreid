@@ -182,8 +182,10 @@ class ImagePartBasedEngine(Engine):
             embeddings_dict, visibility_scores_dict, id_cls_scores_dict, pids)
         loss_summary = reid_loss_summary
 
-        role_loss = self.role_loss(role_cls_scores_dict['foreg'], roles)
+        if self.use_gpu:
+                roles = roles.cuda()
 
+        role_loss = self.role_loss(role_cls_scores_dict['foreg'], roles.type(torch.LongTensor))
         for k in embeddings_dict.keys():
             embeddings_dict[k] = embeddings_dict[k][:24]
         embeddings_dict['parts'] = embeddings_dict['parts'][:, 1:4]
@@ -195,13 +197,12 @@ class ImagePartBasedEngine(Engine):
 
         for k in id_cls_scores_dict.keys():
             team_id_cls_scores_dict[k] = team_id_cls_scores_dict[k][:24]
-        team_id_cls_scores_dict['parts'] = team_id_cls_scores_dict['parts'][:, 1:4]
-
+        team_id_cls_scores_dict['parts'] = team_id_cls_scores_dict['foreg'][:, 1:4]
         team_loss, team_loss_summary = self.GiLt_team(
             embeddings_dict, visibility_scores_dict, team_id_cls_scores_dict, team_ids[:24], 1)
 
         #################### multi-task objective ##################
-        loss = team_loss + 0.1*team_loss + role_loss
+        loss = reid_loss + 0.1*team_loss + role_loss
         ############################################################
 
         # 2. Part prediction objective:
@@ -353,7 +354,7 @@ class ImagePartBasedEngine(Engine):
         )
 
         if save_features:
-            dict = {'features': gf, 'cids': g_camids, 'team_id': g_team_ids, 'role': g_roles, 'game_id': g_gids, 'vis_scores': gf_parts_visibility}
+            dict = {'features': gf, 'cids': g_camids, 'team': g_team_ids, 'role': g_roles, 'game_id': g_gids, 'vis_scores': gf_parts_visibility}
             features_dir = osp.join(save_dir, 'features')
             print('Saving features to : ' + features_dir)
             # TODO create if doesn't exist
@@ -663,7 +664,7 @@ class ImagePartBasedEngine(Engine):
         imgs_path = data["img_path"]
         masks = data["mask"] if "mask" in data else None
         pids = data["pid"]
-        team_ids = data["team_id"]
+        team_ids = data["team"]
         roles = data["role"]
 
         if self.use_gpu:
@@ -686,7 +687,7 @@ class ImagePartBasedEngine(Engine):
         masks = data["mask"] if "mask" in data else None
         pids = data["pid"]
         camids = data["camid"]
-        team_ids = data["team_id"]
+        team_ids = data["team"]
         roles = data["role"]
         game_ids = data["game_id"]
 
