@@ -20,7 +20,6 @@ def get_default_config():
     cfg.project.tags = []
     cfg.project.config_file = ""
     cfg.project.debug_mode = False
-    cfg.project.verbose = False
     cfg.project.logger = CN()  # Choose experiment manager client to use or simply use disk dump / matplotlib
     cfg.project.logger.use_clearml = False
     cfg.project.logger.use_neptune = False
