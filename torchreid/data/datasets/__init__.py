@@ -5,7 +5,7 @@ import copy
 from .image import (
     GRID, PRID, CUHK01, CUHK02, CUHK03, MSMT17, VIPeR, SenseReID, Market1501,
     DukeMTMCreID, iLIDS, OccludedDuke, OccludedReID, Partial_iLIDS, Partial_REID, PDukemtmcReid,
-    P_ETHZ
+    P_ETHZ, SoccerNet
 )
 from .video import PRID2011, Mars, DukeMTMCVidReID, iLIDSVID
 from .dataset import Dataset, ImageDataset, VideoDataset

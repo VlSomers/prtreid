@@ -147,8 +147,9 @@ def build_transforms(
         if masks_preprocess != 'none':
             print('+ masks preprocess = {}'.format(masks_preprocess))
             masks_preprocess_transform = masks_preprocess_all[masks_preprocess]
-            transform_tr += [masks_preprocess_transform()]
-            transform_te += [masks_preprocess_transform()]
+            # mask grouping as first transform to reduce tensor size asap and speed up other transforms
+            transform_tr = [masks_preprocess_transform()] + transform_tr
+            transform_te = [masks_preprocess_transform()] + transform_te
 
         print('+ use add background mask')
         transform_tr += [AddBackgroundMask(background_computation_strategy, softmax_weight, mask_filtering_threshold)]

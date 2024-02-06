@@ -337,6 +337,7 @@ class ImageDataset(Dataset):
                 transf_args["mask"] = np.ones((1, 2, 2))
             else:
                 pass
+
         result = self.transforms(mode)(**transf_args)
         sample.update(result)
         return sample

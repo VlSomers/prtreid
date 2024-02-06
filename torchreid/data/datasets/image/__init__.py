@@ -17,3 +17,4 @@ from .partial_reid import Partial_REID
 from .partial_ilids import Partial_iLIDS
 from .p_ETHZ import P_ETHZ
 from .p_dukemtmc_reid import PDukemtmcReid
+from .soccernet import SoccerNet

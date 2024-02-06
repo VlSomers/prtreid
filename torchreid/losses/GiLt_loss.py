@@ -42,7 +42,7 @@ class GiLtLoss(nn.Module):
         self.identity_loss = CrossEntropyLoss(label_smooth=True)
         self.use_visibility_scores = use_visibility_scores
 
-    def forward(self, embeddings_dict, visibility_scores_dict, id_cls_scores_dict, pids):
+    def forward(self, embeddings_dict, visibility_scores_dict, id_cls_scores_dict, pids, mode=0): # mode=0 -> reid, mode=1 -> team_aff
         """
         Keys in the input dictionaries are from {'globl', 'foreg', 'conct', 'parts'} and correspond to the different
         types of embeddings. In the documentation below, we denote the batch size by 'N' and the number of parts by 'K'.
@@ -60,9 +60,10 @@ class GiLtLoss(nn.Module):
         losses = []
         # global, foreground and parts embeddings id loss
         for key in [GLOBAL, FOREGROUND, CONCAT_PARTS, PARTS]:
+            if mode == 2 and key != 'foreg': continue
             loss_info = OrderedDict() if key not in loss_summary else loss_summary[key]
             ce_w = self.losses_weights[key]['id']
-            if ce_w > 0:
+            if ce_w > 0 and mode != 1:
                 parts_id_loss, parts_id_accuracy = self.compute_id_cls_loss(id_cls_scores_dict[key],
                                                                             visibility_scores_dict[key], pids)
                 losses.append((ce_w, parts_id_loss))
@@ -73,9 +74,10 @@ class GiLtLoss(nn.Module):
 
         # global, foreground and parts embeddings triplet loss
         for key in [GLOBAL, FOREGROUND, CONCAT_PARTS, PARTS]:
+            if mode == 2 and key != 'foreg': continue
             loss_info = OrderedDict() if key not in loss_summary else loss_summary[key]
             tr_w = self.losses_weights[key]['tr']
-            if tr_w > 0:
+            if tr_w > 0 and mode != 2:
                 parts_triplet_loss, parts_trivial_triplets_ratio, parts_valid_triplets_ratio = \
                     self.compute_triplet_loss(embeddings_dict[key], visibility_scores_dict[key], pids)
                 losses.append((tr_w, parts_triplet_loss))

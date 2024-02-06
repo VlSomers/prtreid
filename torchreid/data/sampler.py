@@ -29,9 +29,15 @@ class RandomIdentitySampler(Sampler):
         self.num_instances = num_instances
         self.num_pids_per_batch = self.batch_size // self.num_instances
         self.index_dic = defaultdict(list)
+        self.game_dic = {}
         for index, sample in enumerate(self.data_source):
             self.index_dic[sample['pid']].append(index)
+            if sample['camid'] not in self.game_dic.keys():
+                self.game_dic[sample['camid']] = defaultdict(list)
+            self.game_dic[sample['camid']][sample['pid']].append(index)
+
         self.pids = list(self.index_dic.keys())
+        self.gids = list(self.game_dic.keys())
 
         # estimate number of examples in an epoch
         self.length = 0
@@ -44,6 +50,7 @@ class RandomIdentitySampler(Sampler):
 
     def __iter__(self):
         batch_idxs_dict = defaultdict(list)
+        batch_games_dic = copy.deepcopy(self.game_dic)
 
         for pid in self.pids:
             idxs = copy.deepcopy(self.index_dic[pid])
@@ -59,16 +66,225 @@ class RandomIdentitySampler(Sampler):
                     batch_idxs_dict[pid].append(batch_idxs)
                     batch_idxs = []
 
-        avai_pids = copy.deepcopy(self.pids)
+        avai_gids = copy.deepcopy(self.gids)
         final_idxs = []
 
-        while len(avai_pids) >= self.num_pids_per_batch:
+        while len(avai_gids) > 0:
+            selected_game = random.sample(avai_gids, 1)[0]
+            avai_pids = copy.deepcopy([i for i in batch_games_dic[selected_game].keys()])
             selected_pids = random.sample(avai_pids, self.num_pids_per_batch)
             for pid in selected_pids:
                 batch_idxs = batch_idxs_dict[pid].pop(0)
                 final_idxs.extend(batch_idxs)
+
                 if len(batch_idxs_dict[pid]) == 0:
-                    avai_pids.remove(pid)
+                    del batch_idxs_dict[pid]
+                    del batch_games_dic[selected_game][pid]
+
+            if len(batch_games_dic[selected_game].keys()) < self.num_pids_per_batch:
+                    avai_gids.remove(selected_game)
+
+        return iter(final_idxs)
+
+    def __len__(self):
+        return self.length
+
+
+
+class RandomIdentitySampler2(Sampler):
+    """Randomly samples N identities each with K instances.
+
+    Args:
+        data_source (list): contains tuples of (img_path(s), pid, camid).
+        batch_size (int): batch size.
+        num_instances (int): number of instances per identity in a batch.
+    """
+
+    def __init__(self, data_source, batch_size, num_instances):
+        if batch_size < num_instances:
+            raise ValueError(
+                'batch_size={} must be no less '
+                'than num_instances={}'.format(batch_size, num_instances)
+            )
+
+        self.data_source = data_source
+        self.batch_size = batch_size
+        self.num_instances = num_instances
+        self.num_pids_per_batch = self.batch_size // self.num_instances
+        self.index_dic = defaultdict(list)
+        self.game_dic = {}
+        for index, sample in enumerate(self.data_source):
+            self.index_dic[sample['pid']].append(index)
+            if sample['camid'] not in self.game_dic.keys():
+                self.game_dic[sample['camid']] = {'0': defaultdict(list), '1': defaultdict(list), '2': defaultdict(list)}
+
+            if sample['role'] == 0 :
+                if sample['team_id'] %2 == 0:
+                    self.game_dic[sample['camid']]['0'][sample['pid']].append(index)
+                else:
+                    self.game_dic[sample['camid']]['1'][sample['pid']].append(index)
+            else:
+                self.game_dic[sample['camid']]['2'][sample['pid']].append(index)
+
+        self.pids = list(self.index_dic.keys())
+        self.gids = list(self.game_dic.keys())
+
+        # estimate number of examples in an epoch
+        self.length = 0
+        for pid in self.pids:
+            idxs = self.index_dic[pid]
+            num = len(idxs)
+            if num < self.num_instances:
+                num = self.num_instances
+            self.length += num - num % self.num_instances
+
+    def __iter__(self):
+        batch_idxs_dict = defaultdict(list)
+        batch_games_dic = copy.deepcopy(self.game_dic)
+
+        for pid in self.pids:
+            idxs = copy.deepcopy(self.index_dic[pid])
+            if len(idxs) < self.num_instances:
+                idxs = np.random.choice(
+                    idxs, size=self.num_instances, replace=True
+                )
+            random.shuffle(idxs)
+            batch_idxs = []
+            for idx in idxs:
+                batch_idxs.append(idx)
+                if len(batch_idxs) == self.num_instances:
+                    batch_idxs_dict[pid].append(batch_idxs)
+                    batch_idxs = []
+
+        avai_gids = copy.deepcopy(self.gids)
+        final_idxs = []
+
+        while len(avai_gids) > 0:
+            selected_game = random.sample(avai_gids, 1)[0]
+            ################### from left side ############################
+            avai_pids = copy.deepcopy([i for i in batch_games_dic[selected_game]['0'].keys()])
+            selected_pids = random.sample(avai_pids, 3)
+            ################### from right side ###########################
+            avai_pids = copy.deepcopy([i for i in batch_games_dic[selected_game]['1'].keys()])
+            selected_pids += random.sample(avai_pids, 3)
+            ################## from other roles ###########################
+            avai_pids = copy.deepcopy([i for i in batch_games_dic[selected_game]['2'].keys()])
+            selected_pids += random.sample(avai_pids, 2)
+
+            for pid in selected_pids:
+                batch_idxs = batch_idxs_dict[pid].pop(0)
+                if pid in batch_games_dic[selected_game]['2']:
+                    batch_idxs_dict[pid].append(batch_idxs)
+
+                final_idxs.extend(batch_idxs)
+
+                if len(batch_idxs_dict[pid]) == 0:
+                    del batch_idxs_dict[pid]
+                    if '0' in batch_games_dic[selected_game].keys() and pid in batch_games_dic[selected_game]['0']:
+                        del batch_games_dic[selected_game]['0'][pid]
+                        if len(batch_games_dic[selected_game]['0']) < 3:
+                            del batch_games_dic[selected_game]['0']
+
+                    elif '1' in batch_games_dic[selected_game].keys() and pid in batch_games_dic[selected_game]['1']:
+                        del batch_games_dic[selected_game]['1'][pid]
+                        if len(batch_games_dic[selected_game]['1']) < 3:
+                            del batch_games_dic[selected_game]['1']
+
+                    elif '2' in batch_games_dic[selected_game].keys() and pid in batch_games_dic[selected_game]['2']:
+                        del batch_games_dic[selected_game]['2'][pid]
+                        if len(batch_games_dic[selected_game]['2']) < 2:
+                            del batch_games_dic[selected_game]['2']
+
+            if len(batch_games_dic[selected_game].keys()) < 3:
+                    avai_gids.remove(selected_game)
+
+        return iter(final_idxs)
+
+    def __len__(self):
+        return self.length
+
+
+
+class RandomIdentityAndTeamSampler(Sampler):
+    """Randomly samples N identities each with K instances.
+
+    Args:
+        data_source (list): contains tuples of (img_path(s), pid, camid).
+        batch_size (int): batch size.
+        num_instances (int): number of instances per identity in a batch.
+    """
+
+    def __init__(self, data_source, batch_size, num_instances, num_teams):
+        if batch_size < num_instances:
+            raise ValueError(
+                'batch_size={} must be no less '
+                'than num_instances={}'.format(batch_size, num_instances)
+            )
+
+        self.data_source = data_source
+        self.batch_size = batch_size
+        self.num_instances = num_instances
+        self.num_teams = num_teams
+        self.num_pids_per_batch = self.batch_size // self.num_instances
+        self.num_pids_per_team = self.num_pids_per_batch // self.num_teams
+        self.index_dic = defaultdict(list)
+        self.team_dic = {}
+
+        for index, sample in enumerate(self.data_source):
+            self.index_dic[sample['pid']].append(index)
+            if sample['team_id'] not in self.team_dic.keys():
+                self.team_dic[sample['team_id']] = defaultdict(list)
+            self.team_dic[sample['team_id']][sample['pid']].append(index)
+
+        self.pids = list(self.index_dic.keys())
+        self.team_ids = list(self.team_dic.keys())
+
+        # estimate number of examples in an epoch
+        self.length = 0
+        for pid in self.pids:
+            idxs = self.index_dic[pid]
+            num = len(idxs)
+            if num < self.num_instances:
+                num = self.num_instances
+            self.length += num - num % self.num_instances
+
+    def __iter__(self):
+        batch_idxs_dict = {}
+
+        for team in self.team_ids:
+            batch_idxs_dict[team] = defaultdict(list)
+
+            for pid in self.team_dic[team].keys():
+                idxs = copy.deepcopy(self.index_dic[pid])
+                if len(idxs) < self.num_instances:
+                    idxs = np.random.choice(
+                        idxs, size=self.num_instances, replace=True
+                    )
+                random.shuffle(idxs)
+                batch_idxs = []
+                for idx in idxs:
+                    batch_idxs.append(idx)
+                    if len(batch_idxs) == self.num_instances:
+                        batch_idxs_dict[team][pid].append(batch_idxs)
+                        batch_idxs = []
+
+        avai_teams = copy.deepcopy(self.team_ids)
+        final_idxs = []
+
+        while len(avai_teams) >= self.num_teams:
+            selected_teams = random.sample(avai_teams, self.num_teams)
+            for team in selected_teams:
+                avai_pids = copy.deepcopy([i for i in batch_idxs_dict[team].keys()])
+                selected_pids = random.sample(avai_pids, self.num_pids_per_team)
+                for pid in selected_pids:
+                    batch_idxs = batch_idxs_dict[team][pid].pop(0)
+                    final_idxs.extend(batch_idxs)
+
+                    if len(batch_idxs_dict[team][pid]) == 0:
+                        del batch_idxs_dict[team][pid]
+
+                if len(batch_idxs_dict[team].keys()) < self.num_pids_per_team:
+                    avai_teams.remove(team)
 
         return iter(final_idxs)
 
@@ -92,12 +308,14 @@ def build_train_sampler(
         'train_sampler must be one of {}, but got {}'.format(AVAI_SAMPLERS, train_sampler)
 
     if train_sampler == 'RandomIdentitySampler':
-        sampler = RandomIdentitySampler(data_source, batch_size, num_instances)
+        sampler = RandomIdentitySampler2(data_source, batch_size, num_instances)
 
     elif train_sampler == 'SequentialSampler':
         sampler = SequentialSampler(data_source)
 
     elif train_sampler == 'RandomSampler':
         sampler = RandomSampler(data_source)
+
+    #sampler = RandomIdentityAndTeamSampler(data_source, 64, 4, 4)
 
     return sampler

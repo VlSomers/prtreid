@@ -7,6 +7,8 @@ import os.path as osp
 import warnings
 from functools import partial
 from collections import OrderedDict
+from os.path import abspath
+
 import torch
 import torch.nn as nn
 
@@ -58,7 +60,7 @@ def save_checkpoint(
     epoch = state['epoch']
     fpath = osp.join(save_dir, 'job-{}_{}_model.pth.tar'.format(job_id, str(epoch)))
     torch.save(state, fpath)
-    print('Checkpoint saved to "{}"'.format(fpath))
+    print('Checkpoint saved to "{}"'.format(abspath(fpath)))
     if is_best:
         shutil.copy(fpath, osp.join(osp.dirname(fpath), 'model-best.pth.tar'))
 

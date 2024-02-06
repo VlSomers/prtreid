@@ -123,7 +123,6 @@ def show_ranking_grid(query_sample, gallery_topk_samples, mAP, rank1, dataset_na
     insert_background_line(grid_img, BLUE, 0, HEIGHT, 120, 0)
     insert_background_line(grid_img, BLUE, len(samples), HEIGHT, 0, -75)
 
-
     pos = (int(grid_img.shape[1]/2), 0)
     filtering_str = "body part filtering with threshold {}".format(config.model.bpbreid.masks.mask_filtering_threshold) if config.model.bpbreid.mask_filtering_testing else "no body part filtering"
     align_top_text(grid_img, "Ranking for dataset {}, {}, pid {}, mAP {:.2f}%, rank1 {:.2f}%, loss {}, {}".format(dataset_name, config.project.job_id, qpid, mAP * 100, rank1 * 100, config.loss.part_based.name, filtering_str), pos, 3.5, 7, 120)

@@ -6,14 +6,18 @@ from torchreid.data.masks_transforms.mask_transform import MaskTransform
 
 class PCBMasks(MaskTransform):
     def apply_to_mask(self, masks, **params):
+        w, h = params['cols'], params['rows']
         self._size = masks.shape[1:3]
-        self.stripe_height = self._size[0] / self.parts_num
+        self.stripe_height = h / self.parts_num
 
-        self.pcb_masks = torch.zeros((self.parts_num, self._size[0], self._size[1]))
+        self.pcb_masks = torch.zeros((self.parts_num, h, w))
 
-        stripes_range = np.round(np.arange(0, self.parts_num + 1) * self._size[0] / self.parts_num).astype(int)
+        stripes_range = np.round(np.arange(0, self.parts_num + 1) * h / self.parts_num).astype(int)
         for i in range(0, stripes_range.size-1):
             self.pcb_masks[i, stripes_range[i]:stripes_range[i+1], :] = 1
+
+        if type(masks) is np.ndarray:
+            return self.pcb_masks.permute(1, 2, 0).numpy()
 
         return self.pcb_masks
 

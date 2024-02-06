@@ -34,7 +34,12 @@ masks_preprocess_pifpaf = {
 }
 
 masks_preprocess_coco = {
-    'cc6': CocoToSixBodyMasks
+    'cc6': CocoToSixBodyMasks,
+    'cck6': CocoToSixBodyMasks,
+}
+
+masks_preprocess_coco_joints = {
+    "ccj6": CocoJointsToSixBodyMasks
 }
 
 masks_preprocess_fixed = {
@@ -49,7 +54,8 @@ masks_preprocess_fixed = {
 }
 
 masks_preprocess_transforms = {**masks_preprocess_pifpaf, **masks_preprocess_coco}
-masks_preprocess_all = {**masks_preprocess_pifpaf, **masks_preprocess_fixed, **masks_preprocess_coco}
+masks_preprocess_all = {**masks_preprocess_pifpaf, **masks_preprocess_fixed,
+                        **masks_preprocess_coco, **masks_preprocess_coco_joints}
 
 
 def compute_parts_num_and_names(cfg):
@@ -58,7 +64,7 @@ def compute_parts_num_and_names(cfg):
         if (mask_config is not None and mask_config[1]) or cfg.model.bpbreid.masks.preprocess == 'none':
             # ISP masks or no transform
             cfg.model.bpbreid.masks.parts_num = mask_config[0]
-            cfg.model.bpbreid.masks.parts_names = mask_config[3] if 3 in mask_config else ["p{}".format(p) for p in range(1, cfg.data.parts_num+1)]
+            cfg.model.bpbreid.masks.parts_names = mask_config[3] if 3 in mask_config else ["p{}".format(p) for p in range(1, cfg.model.bpbreid.masks.parts_num+1)]
         else:
             masks_transform = masks_preprocess_all[cfg.model.bpbreid.masks.preprocess]()
             cfg.model.bpbreid.masks.parts_num = masks_transform.parts_num
