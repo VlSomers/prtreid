@@ -99,14 +99,14 @@ Please refer to [our paper](https://arxiv.org/abs/2211.03679) for more informati
 In this repository, we propose a framework and a strong baseline to support further research on part-based ReID methods.
 Our code is based on the popular [Torchreid](https://github.com/KaiyangZhou/deep-person-reid) framework for person re-identification.
 In this codebase, we provide several adaptations to the original framework to support part-based ReID methods: 
-- The [ImagePartBasedEngine](torchreid/engine/image/part_based_engine.py) to train/test part-based models, compute query-gallery distance matrix using multiple features per test sample with support for visibility scores.
-- The fully configurable [GiLt loss](/torchreid/losses/GiLt_loss.py) to selectively apply id/triplet loss on holistics (global) and part-based features.
-- The [BodyPartAttentionLoss](torchreid/losses/body_part_attention_loss.py) to train the attention mechanism.
-- The [BPBreID](torchreid/models/bpbreid.py) part-based model to compute part-based features with support for body-part learnable attention, fixed attention heatmaps from an external model, PCB-like horizontal stripes, etc.
+- The [ImagePartBasedEngine](prtreid/engine/image/part_based_engine.py) to train/test part-based models, compute query-gallery distance matrix using multiple features per test sample with support for visibility scores.
+- The fully configurable [GiLt loss](/prtreid/losses/GiLt_loss.py) to selectively apply id/triplet loss on holistics (global) and part-based features.
+- The [BodyPartAttentionLoss](prtreid/losses/body_part_attention_loss.py) to train the attention mechanism.
+- The [BPBreID](prtreid/models/bpbreid.py) part-based model to compute part-based features with support for body-part learnable attention, fixed attention heatmaps from an external model, PCB-like horizontal stripes, etc.
 - The [Albumentation](https://albumentations.ai/) data augmentation library used for data augmentation, with support for external heatmaps/masks transforms.
-- Support for [Weights & Biases](https://wandb.ai/site) and other logging tools in the [Logger](torchreid/utils/logging/logger.py) class.
-- An [EngineState](torchreid/utils/engine_state.py) class to keep track of training epoch, etc.
-- A new [ranking visualization](torchreid/utils/visualization/visualize_query_gallery_rankings.py) tool to display part heatmaps, local distance for each part and other metrics.
+- Support for [Weights & Biases](https://wandb.ai/site) and other logging tools in the [Logger](prtreid/utils/logging/logger.py) class.
+- An [EngineState](prtreid/utils/engine_state.py) class to keep track of training epoch, etc.
+- A new [ranking visualization](prtreid/utils/visualization/visualize_query_gallery_rankings.py) tool to display part heatmaps, local distance for each part and other metrics.
 - For more information about all available configuration and parameters, please have a look at the [default config file](scripts/default_config.py).
 
 You can also have a look at the original [Torchreid README](Torchreid_original_README.rst) for additional information, such as documentation, how-to instructions, etc.

@@ -20,8 +20,8 @@ def numpy_include():
 
 ext_modules = [
     Extension(
-        'torchreid.metrics.rank_cylib.rank_cy',
-        ['torchreid/metrics/rank_cylib/rank_cy.pyx'],
+        'prtreid.metrics.rank_cylib.rank_cy',
+        ['prtreid/metrics/rank_cylib/rank_cy.pyx'],
         include_dirs=[numpy_include()],
     )
 ]

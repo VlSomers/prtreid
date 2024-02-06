@@ -1,11 +1,11 @@
 [project]
-name = "torchreid"
+name = "prtreid"
 authors = [{name="Vladimir Somers"}, {name="Kaiyang Zhou"}]
-urls = {homepage = "https://github.com/VlSomers/bpbreid"}
+urls = {homepage = "https://github.com/VlSomers/prtreid"}
 dynamic = ["version", "description", "license", "dependencies", "keywords", "readme", "optional-dependencies"]
 
 [tool.setuptools.dynamic]
-version = {attr = "torchreid.__version__"}
+version = {attr = "prtreid.__version__"}
 
 [build-system]
 requires = ["setuptools", "numpy", "cython"]

@@ -23,7 +23,7 @@ project = u'torchreid'
 copyright = u'2019, Kaiyang Zhou'
 author = u'Kaiyang Zhou'
 
-version_file = '../torchreid/__init__.py'
+version_file = '../prtreid/__init__.py'
 with open(version_file, 'r') as f:
     exec(compile(f.read(), version_file, 'exec'))
 __version__ = locals()['__version__']
