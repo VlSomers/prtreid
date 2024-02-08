@@ -189,8 +189,8 @@ class BPBreID(nn.Module):
         else:
             if external_parts_masks is None:
                 pixels_cls_scores = None
-                external_parts_masks = torch.ones((N, self.parts_num + 1, Hf, Wf), device=spatial_features.device)
-                external_parts_masks[:, 0] = 0
+                pixels_parts_probabilities = torch.ones((N, self.parts_num + 1, Hf, Wf), device=spatial_features.device)
+                pixels_parts_probabilities[:, 0] = 0
             else:
                 pixels_cls_scores = None
                 external_parts_masks = external_parts_masks.type(spatial_features.dtype)

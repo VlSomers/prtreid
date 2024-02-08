@@ -125,7 +125,7 @@ class FeatureExtractor(object):
     def __call__(self, input, external_parts_masks=None):
         if isinstance(input, list):
             images = []
-            masks = []
+            masks = None
 
             for i, element in enumerate(input):
                 if isinstance(element, str):
