@@ -5,7 +5,7 @@ import random
 from collections import defaultdict
 from torch.utils.data.sampler import Sampler, RandomSampler, SequentialSampler
 
-AVAI_SAMPLERS = ['RandomIdentitySampler', 'SequentialSampler', 'RandomSampler']
+AVAI_SAMPLERS = ['RandomIdentitySampler', 'SequentialSampler', 'RandomSampler', 'PrtreidSampler']
 
 
 class RandomIdentitySampler(Sampler):
@@ -100,7 +100,7 @@ class PrtreidSampler(Sampler):
         num_instances (int): number of instances per identity in a batch.
     """
 
-    def __init__(self, data_source, batch_size, num_instances):
+    def __init__(self, data_source, batch_size, num_instances, column_mapping):
         if batch_size < num_instances:
             raise ValueError(
                 'batch_size={} must be no less '
@@ -110,21 +110,19 @@ class PrtreidSampler(Sampler):
         self.data_source = data_source
         self.batch_size = batch_size
         self.num_instances = num_instances
+        self.column_mapping = column_mapping
         self.num_pids_per_batch = self.batch_size // self.num_instances
         self.index_dic = defaultdict(list)
         self.game_dic = {}
         for index, sample in enumerate(self.data_source):
             self.index_dic[sample['pid']].append(index)
-            if sample['camid'] not in self.game_dic.keys():
-                self.game_dic[sample['camid']] = {'0': defaultdict(list), '1': defaultdict(list), '2': defaultdict(list)}
-
-            if sample['role'] == 0:
-                if sample['team'] %2 == 0:
-                    self.game_dic[sample['camid']]['0'][sample['pid']].append(index)
-                else:
-                    self.game_dic[sample['camid']]['1'][sample['pid']].append(index)
+            if sample['video_id'] not in self.game_dic.keys():
+                self.game_dic[sample['video_id']] = {'left': defaultdict(list), 'right': defaultdict(list), 'other': defaultdict(list)}
+            if self.column_mapping['role'][sample['role']] == 'player':  # goalkeeper not part of team classification
+                team = self.column_mapping['team'][sample['team']]
+                self.game_dic[sample['video_id']][team][sample['pid']].append(index)
             else:
-                self.game_dic[sample['camid']]['2'][sample['pid']].append(index)
+                self.game_dic[sample['video_id']]['other'][sample['pid']].append(index)
 
         self.pids = list(self.index_dic.keys())
         self.gids = list(self.game_dic.keys())
@@ -162,38 +160,38 @@ class PrtreidSampler(Sampler):
         while len(avai_gids) > 0:
             selected_game = random.sample(avai_gids, 1)[0]
             ################### from left side ############################
-            avai_pids = copy.deepcopy([i for i in batch_games_dic[selected_game]['0'].keys()])
+            avai_pids = copy.deepcopy([i for i in batch_games_dic[selected_game]['left'].keys()])
             selected_pids = random.sample(avai_pids, 3)
             ################### from right side ###########################
-            avai_pids = copy.deepcopy([i for i in batch_games_dic[selected_game]['1'].keys()])
+            avai_pids = copy.deepcopy([i for i in batch_games_dic[selected_game]['right'].keys()])
             selected_pids += random.sample(avai_pids, 3)
             ################## from other roles ###########################
-            avai_pids = copy.deepcopy([i for i in batch_games_dic[selected_game]['2'].keys()])
+            avai_pids = copy.deepcopy([i for i in batch_games_dic[selected_game]['other'].keys()])
             selected_pids += random.sample(avai_pids, 2)
 
             for pid in selected_pids:
                 batch_idxs = batch_idxs_dict[pid].pop(0)
-                if pid in batch_games_dic[selected_game]['2']:
+                if pid in batch_games_dic[selected_game]['other']:
                     batch_idxs_dict[pid].append(batch_idxs)
 
                 final_idxs.extend(batch_idxs)
 
                 if len(batch_idxs_dict[pid]) == 0:
                     del batch_idxs_dict[pid]
-                    if '0' in batch_games_dic[selected_game].keys() and pid in batch_games_dic[selected_game]['0']:
-                        del batch_games_dic[selected_game]['0'][pid]
-                        if len(batch_games_dic[selected_game]['0']) < 3:
-                            del batch_games_dic[selected_game]['0']
+                    if 'left' in batch_games_dic[selected_game].keys() and pid in batch_games_dic[selected_game]['left']:
+                        del batch_games_dic[selected_game]['left'][pid]
+                        if len(batch_games_dic[selected_game]['left']) < 3:
+                            del batch_games_dic[selected_game]['left']
 
-                    elif '1' in batch_games_dic[selected_game].keys() and pid in batch_games_dic[selected_game]['1']:
-                        del batch_games_dic[selected_game]['1'][pid]
-                        if len(batch_games_dic[selected_game]['1']) < 3:
-                            del batch_games_dic[selected_game]['1']
+                    elif 'right' in batch_games_dic[selected_game].keys() and pid in batch_games_dic[selected_game]['right']:
+                        del batch_games_dic[selected_game]['right'][pid]
+                        if len(batch_games_dic[selected_game]['right']) < 3:
+                            del batch_games_dic[selected_game]['right']
 
-                    elif '2' in batch_games_dic[selected_game].keys() and pid in batch_games_dic[selected_game]['2']:
-                        del batch_games_dic[selected_game]['2'][pid]
-                        if len(batch_games_dic[selected_game]['2']) < 2:
-                            del batch_games_dic[selected_game]['2']
+                    elif 'other' in batch_games_dic[selected_game].keys() and pid in batch_games_dic[selected_game]['other']:
+                        del batch_games_dic[selected_game]['other'][pid]
+                        if len(batch_games_dic[selected_game]['other']) < 2:
+                            del batch_games_dic[selected_game]['other']
 
             if len(batch_games_dic[selected_game].keys()) < 3:
                     avai_gids.remove(selected_game)
@@ -208,7 +206,7 @@ class PrtreidSampler(Sampler):
 
 
 def build_train_sampler(
-    data_source, train_sampler, batch_size=32, num_instances=4, **kwargs
+    trainset, train_sampler, batch_size=32, num_instances=4, **kwargs
 ):
     """Builds a training sampler.
 
@@ -222,8 +220,12 @@ def build_train_sampler(
     assert train_sampler in AVAI_SAMPLERS, \
         'train_sampler must be one of {}, but got {}'.format(AVAI_SAMPLERS, train_sampler)
 
+    data_source = trainset.train
     if train_sampler == 'RandomIdentitySampler':
-        sampler = PrtreidSampler(data_source, batch_size, num_instances)
+        sampler = RandomIdentitySampler(data_source, batch_size, num_instances)
+
+    if train_sampler == 'PrtreidSampler':
+        sampler = PrtreidSampler(data_source, batch_size, num_instances, trainset.column_mapping)
 
     elif train_sampler == 'SequentialSampler':
         sampler = SequentialSampler(data_source)

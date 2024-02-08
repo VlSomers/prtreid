@@ -15,6 +15,7 @@ from prtreid.scripts.default_config import (
     get_default_config, lr_scheduler_kwargs, display_config_diff
 )
 from prtreid.utils.engine_state import EngineState
+from prtreid import optim, engine
 
 
 def build_datamanager(cfg):
@@ -255,7 +256,7 @@ def build_torchreid_model_engine(cfg):
         load_pretrained_weights(model, cfg.model.load_weights)
     if cfg.use_gpu:
         model = nn.DataParallel(model).cuda()
-    optimizer = prtreid.optim.build_optimizer(model, **optimizer_kwargs(cfg))
+    optimizer = optim.build_optimizer(model, **optimizer_kwargs(cfg))
     scheduler = prtreid.optim.build_lr_scheduler(
         optimizer, **lr_scheduler_kwargs(cfg)
     )

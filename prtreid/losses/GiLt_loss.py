@@ -60,10 +60,10 @@ class GiLtLoss(nn.Module):
         losses = []
         # global, foreground and parts embeddings id loss
         for key in [GLOBAL, FOREGROUND, CONCAT_PARTS, PARTS]:
-            if mode == 2 and key != 'foreg': continue
+            if mode == 1: continue
             loss_info = OrderedDict() if key not in loss_summary else loss_summary[key]
             ce_w = self.losses_weights[key]['id']
-            if ce_w > 0 and mode != 1:
+            if ce_w > 0:
                 parts_id_loss, parts_id_accuracy = self.compute_id_cls_loss(id_cls_scores_dict[key],
                                                                             visibility_scores_dict[key], pids)
                 losses.append((ce_w, parts_id_loss))
@@ -74,10 +74,10 @@ class GiLtLoss(nn.Module):
 
         # global, foreground and parts embeddings triplet loss
         for key in [GLOBAL, FOREGROUND, CONCAT_PARTS, PARTS]:
-            if mode == 2 and key != 'foreg': continue
+            if mode == 1 and key != 'globl': continue
             loss_info = OrderedDict() if key not in loss_summary else loss_summary[key]
             tr_w = self.losses_weights[key]['tr']
-            if tr_w > 0 and mode != 2:
+            if tr_w > 0 and mode == 1:
                 parts_triplet_loss, parts_trivial_triplets_ratio, parts_valid_triplets_ratio = \
                     self.compute_triplet_loss(embeddings_dict[key], visibility_scores_dict[key], pids)
                 losses.append((tr_w, parts_triplet_loss))

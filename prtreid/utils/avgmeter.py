@@ -270,7 +270,7 @@ class TorchTimeMeter(TimeMeter):
     def _stop_cuda(self):
         if self.start_event is not None:
             self.end_event.record()
-            torch.cuda.synchronize()  # TODO Check if slows down computation
+            # torch.cuda.synchronize()  # TODO Check if slows down computation
             self.update(self.start_event.elapsed_time(self.end_event))
             self.start_event = None
             self.end_event = None

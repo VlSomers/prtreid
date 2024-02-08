@@ -117,7 +117,7 @@ class ImagePartBasedEngine(Engine):
         self.optimizer_timer = self.writer.optimizer_timer
 
     def forward_backward(self, data):
-        imgs, target_masks, pids, team_ids, roles, imgs_path = self.parse_data_for_train(data)
+        imgs, target_masks, pids, teams, roles, imgs_path = self.parse_data_for_train(data)
 
         # feature extraction
         self.feature_extraction_timer.start()
@@ -125,7 +125,7 @@ class ImagePartBasedEngine(Engine):
             embeddings_dict,
             visibility_scores_dict,
             id_cls_scores_dict,
-            team_id_cls_scores_dict,
+            team_cls_scores_dict,
             role_cls_scores_dict,
             pixels_cls_scores,
             spatial_features,
@@ -142,10 +142,10 @@ class ImagePartBasedEngine(Engine):
             visibility_scores_dict,
             embeddings_dict,
             id_cls_scores_dict,
-            team_id_cls_scores_dict,
+            team_cls_scores_dict,
             role_cls_scores_dict,
             pids,
-            team_ids,
+            teams,
             roles,
             pixels_cls_scores,
             target_masks,
@@ -167,10 +167,10 @@ class ImagePartBasedEngine(Engine):
         visibility_scores_dict,
         embeddings_dict,
         id_cls_scores_dict,
-        team_id_cls_scores_dict,
+        team_cls_scores_dict,
         role_cls_scores_dict,
         pids,
-        team_ids,
+        teams,
         roles,
         pixels_cls_scores=None,
         target_masks=None,
@@ -182,27 +182,23 @@ class ImagePartBasedEngine(Engine):
             embeddings_dict, visibility_scores_dict, id_cls_scores_dict, pids)
         loss_summary = reid_loss_summary
 
-        if self.use_gpu:
-                roles = roles.cuda()
-
-        role_loss = self.role_loss(role_cls_scores_dict['foreg'], roles.type(torch.LongTensor))
-        for k in embeddings_dict.keys():
-            embeddings_dict[k] = embeddings_dict[k][:24]
-        embeddings_dict['parts'] = embeddings_dict['parts'][:, 1:4]
+        role_loss = self.role_loss(role_cls_scores_dict[GLOBAL], roles)
 
         ################ team affiliation is applied just on players(not refree, goalkeeper) ###############
+        for k in embeddings_dict.keys():
+            embeddings_dict[k] = embeddings_dict[k][:24]
+        # embeddings_dict[PARTS] = embeddings_dict[PARTS][:, 1:4]
         for k in visibility_scores_dict.keys():
             visibility_scores_dict[k] = visibility_scores_dict[k][:24]
-        visibility_scores_dict['parts'] = visibility_scores_dict['parts'][:, 1:4]
-
+        # visibility_scores_dict[PARTS] = visibility_scores_dict[PARTS][:, 1:4]
         for k in id_cls_scores_dict.keys():
-            team_id_cls_scores_dict[k] = team_id_cls_scores_dict[k][:24]
-        team_id_cls_scores_dict['parts'] = team_id_cls_scores_dict['foreg'][:, 1:4]
+            team_cls_scores_dict[k] = team_cls_scores_dict[k][:24]
+        # team_cls_scores_dict[PARTS] = team_cls_scores_dict[PARTS][:, 1:4]
         team_loss, team_loss_summary = self.GiLt_team(
-            embeddings_dict, visibility_scores_dict, team_id_cls_scores_dict, team_ids[:24], 1)
+            embeddings_dict, visibility_scores_dict, team_cls_scores_dict, teams[:24], 1)
 
         #################### multi-task objective ##################
-        loss = reid_loss + 0.1*team_loss + role_loss
+        loss = reid_loss + 0.1 * team_loss + 1.5 * role_loss
         ############################################################
 
         # 2. Part prediction objective:
@@ -232,7 +228,7 @@ class ImagePartBasedEngine(Engine):
         return loss, loss_summary
 
     def _feature_extraction(self, data_loader):
-        f_, pids_, camids_, team_ids_, gids_, roles_, parts_visibility_, p_masks_, pxl_scores_, role_scores_, anns = (
+        f_, pids_, camids_, teams_, gids_, roles_, parts_visibility_, p_masks_, pxl_scores_, role_scores_, anns = (
             [],
             [],
             [],
@@ -246,7 +242,7 @@ class ImagePartBasedEngine(Engine):
             [],
         )
         for batch_idx, data in enumerate(tqdm(data_loader, desc=f"Batches processed")):
-            imgs, masks, pids, team_ids, camids, gids, roles = self.parse_data_for_eval(data)
+            imgs, masks, pids, teams, camids, gids, roles = self.parse_data_for_eval(data)
             if self.use_gpu:
                 if masks is not None:
                     masks = masks.cuda()
@@ -276,7 +272,7 @@ class ImagePartBasedEngine(Engine):
             pxl_scores_.append(pixels_cls_scores.data.cpu() if pixels_cls_scores is not None else None)
             role_scores_.append(role_cls_scores['foreg'].cpu() if role_cls_scores is not None else None)
             pids_.extend(pids)
-            team_ids_.extend(team_ids)
+            teams_.extend(teams)
             camids_.extend(camids)
             gids_.extend(gids)
             roles_.extend(roles)
@@ -288,12 +284,12 @@ class ImagePartBasedEngine(Engine):
         pxl_scores_ = torch.cat(pxl_scores_, 0) if pxl_scores_[0] is not None else None
         role_scores_ = torch.cat(role_scores_, 0) if role_scores_[0] is not None else None
         pids_ = np.asarray(pids_)
-        team_ids_ = np.asarray(team_ids_)
+        teams_ = np.asarray(teams_)
         camids_ = np.asarray(camids_)
         gids_ = np.asarray(gids_)
         roles_ = np.asarray(roles_)
         anns = collate(anns)
-        return f_, pids_, team_ids_, camids_, gids_, roles_, parts_visibility_, p_masks_, pxl_scores_, role_scores_, anns
+        return f_, pids_, teams_, camids_, gids_, roles_, parts_visibility_, p_masks_, pxl_scores_, role_scores_, anns
 
     @torch.no_grad()
     def _evaluate(
@@ -318,7 +314,7 @@ class ImagePartBasedEngine(Engine):
         (
             qf,
             q_pids,
-            q_team_ids,
+            q_teams,
             q_camids,
             q_gids,
             q_roles,
@@ -334,7 +330,7 @@ class ImagePartBasedEngine(Engine):
         (
             gf,
             g_pids,
-            g_team_ids,
+            g_teams,
             g_camids,
             g_gids,
             g_roles,
@@ -354,7 +350,7 @@ class ImagePartBasedEngine(Engine):
         )
 
         if save_features:
-            dict = {'features': gf, 'cids': g_camids, 'team': g_team_ids, 'role': g_roles, 'game_id': g_gids, 'vis_scores': gf_parts_visibility}
+            dict = {'features': gf, 'cids': g_camids, 'team': g_teams, 'role': g_roles, 'game_id': g_gids, 'vis_scores': gf_parts_visibility}
             features_dir = osp.join(save_dir, 'features')
             print('Saving features to : ' + features_dir)
             # TODO create if doesn't exist
@@ -414,11 +410,11 @@ class ImagePartBasedEngine(Engine):
             "query"
         ].dataset.eval_metric
 
-        print("Computing CMC and mAP for eval Team Afiiliation metric '{}' ...".format(eval_metric))
+        print("Computing CMC and mAP for eval Team Affiliation metric '{}' ...".format(eval_metric))
         eval_metrics = metrics.evaluate_rank(
             distmat,
-            q_team_ids,
-            g_team_ids,
+            q_teams,
+            g_teams,
             q_camids,
             g_camids,
             q_anns=q_anns,
@@ -664,7 +660,7 @@ class ImagePartBasedEngine(Engine):
         imgs_path = data["img_path"]
         masks = data["mask"] if "mask" in data else None
         pids = data["pid"]
-        team_ids = data["team"]
+        teams = data["team"]
         roles = data["role"]
 
         if self.use_gpu:
@@ -672,7 +668,7 @@ class ImagePartBasedEngine(Engine):
             if masks is not None:
                 masks = masks.cuda()
             pids = pids.cuda()
-            team_ids = team_ids.cuda()
+            teams = teams.cuda()
             roles = roles.cuda()
 
         if masks is not None:
@@ -680,15 +676,15 @@ class ImagePartBasedEngine(Engine):
                 self.config.model.bpbreid.masks.parts_num + 1
             ), f"masks.shape[1] ({masks.shape[1]}) != parts_num ({self.config.model.bpbreid.masks.parts_num})"
 
-        return imgs, masks, pids, team_ids, roles, imgs_path
+        return imgs, masks, pids, teams, roles, imgs_path
 
     def parse_data_for_eval(self, data):
         imgs = data["image"]
         masks = data["mask"] if "mask" in data else None
         pids = data["pid"]
         camids = data["camid"]
-        team_ids = data["team"]
+        teams = data["team"]
         roles = data["role"]
-        game_ids = data["game_id"]
+        game_ids = data["video_id"]
 
-        return imgs, masks, pids, team_ids, camids, game_ids, roles
+        return imgs, masks, pids, teams, camids, game_ids, roles

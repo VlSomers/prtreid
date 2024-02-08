@@ -104,10 +104,10 @@ class BPBreID(nn.Module):
 
         ##########################################################################################################################################
         # Init Role classifier
-        #self.global_Role_classifier = BNClassifier(self.dim_reduce_output, self.num_roles)
-        #self.background_Role_classifier = BNClassifier(self.dim_reduce_output, self.num_roles)
+        self.global_Role_classifier = BNClassifier(self.dim_reduce_output, self.num_roles)
+        self.background_Role_classifier = BNClassifier(self.dim_reduce_output, self.num_roles)
         self.foreground_Role_classifier = BNClassifier(self.dim_reduce_output, self.num_roles)
-        #self.concat_parts_Role_classifier = BNClassifier(self.parts_num * self.dim_reduce_output, self.num_roles)
+        self.concat_parts_Role_classifier = BNClassifier(self.parts_num * self.dim_reduce_output, self.num_roles)
         if self.shared_parts_id_classifier:
             # the same identity classifier weights are used for each part branch
             self.parts_Role_classifier = BNClassifier(self.dim_reduce_output, self.num_roles)
@@ -187,12 +187,16 @@ class BPBreID(nn.Module):
             pixels_cls_scores = self.pixel_classifier(spatial_features)  # [N, K, Hf, Wf]
             pixels_parts_probabilities = F.softmax(pixels_cls_scores, dim=1)
         else:
-            pixels_cls_scores = None
-            assert external_parts_masks is not None
-            external_parts_masks = external_parts_masks.type(spatial_features.dtype)
-            pixels_parts_probabilities = nn.functional.interpolate(external_parts_masks, (Hf, Wf), mode='bilinear', align_corners=True)
-            pixels_parts_probabilities.requires_grad = False
-            assert pixels_parts_probabilities.max() <= 1 and pixels_parts_probabilities.min() >= 0
+            if external_parts_masks is None:
+                pixels_cls_scores = None
+                external_parts_masks = torch.ones((N, self.parts_num + 1, Hf, Wf), device=spatial_features.device)
+                external_parts_masks[:, 0] = 0
+            else:
+                pixels_cls_scores = None
+                external_parts_masks = external_parts_masks.type(spatial_features.dtype)
+                pixels_parts_probabilities = nn.functional.interpolate(external_parts_masks, (Hf, Wf), mode='bilinear', align_corners=True)
+                pixels_parts_probabilities.requires_grad = False
+                assert pixels_parts_probabilities.max() <= 1 and pixels_parts_probabilities.min() >= 0
 
         background_masks = pixels_parts_probabilities[:, 0]
         parts_masks = pixels_parts_probabilities[:, 1:]
@@ -267,11 +271,11 @@ class BPBreID(nn.Module):
 
         ##########################################################################################################################################
         # Role classification scores
-        #Role_bn_global_embeddings, Role_global_cls_score = self.global_Role_classifier(global_embeddings)  # [N, D], [N, num_classes]
-        #Role_bn_background_embeddings, Role_background_cls_score = self.background_Role_classifier(background_embeddings)  # [N, D], [N, num_classes]
+        Role_bn_global_embeddings, Role_global_cls_score = self.global_Role_classifier(global_embeddings)  # [N, D], [N, num_classes]
+        Role_bn_background_embeddings, Role_background_cls_score = self.background_Role_classifier(background_embeddings)  # [N, D], [N, num_classes]
         Role_bn_foreground_embeddings, Role_foreground_cls_score = self.foreground_Role_classifier(foreground_embeddings)  # [N, D], [N, num_classes]
-        #Role_bn_concat_parts_embeddings, Role_concat_parts_cls_score = self.concat_parts_Role_classifier(concat_parts_embeddings)  # [N, K*D], [N, num_classes]
-        #Role_bn_parts_embeddings, Role_parts_cls_score = self.parts_identity_classification(self.dim_reduce_output, N, parts_embeddings)  # [N, K, D], [N, K, num_classes]
+        Role_bn_concat_parts_embeddings, Role_concat_parts_cls_score = self.concat_parts_Role_classifier(concat_parts_embeddings)  # [N, K*D], [N, num_classes]
+        Role_bn_parts_embeddings, Role_parts_cls_score = self.parts_identity_classification(self.dim_reduce_output, N, parts_embeddings)  # [N, K, D], [N, K, num_classes]
         ##########################################################################################################################################
 
         # Outputs
@@ -314,11 +318,11 @@ class BPBreID(nn.Module):
 
         ##########################################################################################################################################
         Role_cls_scores = {
-            #GLOBAL: Role_global_cls_score,  # [N, num_classes]
-           # BACKGROUND: Role_background_cls_score,  # [N, num_classes]
+            GLOBAL: Role_global_cls_score,  # [N, num_classes]
+            BACKGROUND: Role_background_cls_score,  # [N, num_classes]
             FOREGROUND: Role_foreground_cls_score,  # [N, num_classes]
-            #CONCAT_PARTS: Role_concat_parts_cls_score,  # [N, num_classes]
-           # PARTS: Role_parts_cls_score,  # [N, K, num_classes]
+            CONCAT_PARTS: Role_concat_parts_cls_score,  # [N, num_classes]
+            PARTS: Role_parts_cls_score,  # [N, K, num_classes]
         }
         ##########################################################################################################################################
 
