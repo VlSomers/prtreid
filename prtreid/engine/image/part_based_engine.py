@@ -270,7 +270,7 @@ class ImagePartBasedEngine(Engine):
             f_.append(features)
             p_masks_.append(parts_masks)
             pxl_scores_.append(pixels_cls_scores.data.cpu() if pixels_cls_scores is not None else None)
-            role_scores_.append(role_cls_scores['foreg'].cpu() if role_cls_scores is not None else None)
+            role_scores_.append(role_cls_scores[GLOBAL].cpu() if role_cls_scores is not None else None)
             pids_.extend(pids)
             teams_.extend(teams)
             camids_.extend(camids)
