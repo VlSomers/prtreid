@@ -15,7 +15,7 @@ __all__ = [
 class BPBreID(nn.Module):
     """Posed based feature extraction network
     """
-    def __init__(self, num_classes, pretrained, loss, model_cfg, horizontal_stripes=False, num_teams=6, num_roles=4, **kwargs):
+    def __init__(self, num_classes, pretrained, loss, model_cfg, horizontal_stripes=False, num_teams=6, num_roles=5, **kwargs):  # FIXME hardcoded
         super(BPBreID, self).__init__()
 
         # Init config
@@ -267,7 +267,7 @@ class BPBreID(nn.Module):
         team_bn_background_embeddings, team_background_cls_score = self.background_team_classifier(background_embeddings)  # [N, D], [N, num_classes]
         team_bn_foreground_embeddings, team_foreground_cls_score = self.foreground_team_classifier(foreground_embeddings)  # [N, D], [N, num_classes]
         team_bn_concat_parts_embeddings, team_concat_parts_cls_score = self.concat_parts_team_classifier(concat_parts_embeddings)  # [N, K*D], [N, num_classes]
-        team_bn_parts_embeddings, team_parts_cls_score = self.parts_identity_classification(self.dim_reduce_output, N, parts_embeddings)  # [N, K, D], [N, K, num_classes]
+        # team_bn_parts_embeddings, team_parts_cls_score = self.parts_identity_classification(self.dim_reduce_output, N, parts_embeddings)  # [N, K, D], [N, K, num_classes]
 
         ##########################################################################################################################################
         # Role classification scores
@@ -313,7 +313,7 @@ class BPBreID(nn.Module):
             BACKGROUND: team_background_cls_score,  # [N, num_classes]
             FOREGROUND: team_foreground_cls_score,  # [N, num_classes]
             CONCAT_PARTS: team_concat_parts_cls_score,  # [N, num_classes]
-            PARTS: team_parts_cls_score,  # [N, K, num_classes]
+            # PARTS: team_parts_cls_score,  # [N, K, num_classes]
         }
 
         ##########################################################################################################################################

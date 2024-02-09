@@ -182,6 +182,8 @@ class ImagePartBasedEngine(Engine):
             embeddings_dict, visibility_scores_dict, id_cls_scores_dict, pids)
         loss_summary = reid_loss_summary
 
+        # #########################################################
+        #
         role_loss = self.role_loss(role_cls_scores_dict[GLOBAL], roles)
 
         ################ team affiliation is applied just on players(not refree, goalkeeper) ###############
@@ -191,7 +193,7 @@ class ImagePartBasedEngine(Engine):
         for k in visibility_scores_dict.keys():
             visibility_scores_dict[k] = visibility_scores_dict[k][:24]
         # visibility_scores_dict[PARTS] = visibility_scores_dict[PARTS][:, 1:4]
-        for k in id_cls_scores_dict.keys():
+        for k in team_cls_scores_dict.keys():
             team_cls_scores_dict[k] = team_cls_scores_dict[k][:24]
         # team_cls_scores_dict[PARTS] = team_cls_scores_dict[PARTS][:, 1:4]
         team_loss, team_loss_summary = self.GiLt_team(
@@ -411,14 +413,20 @@ class ImagePartBasedEngine(Engine):
         ].dataset.eval_metric
 
         print("Computing CMC and mAP for eval Team Affiliation metric '{}' ...".format(eval_metric))
+        # filter our non-players, i.e. team = -1
+        f_distmat = distmat[q_teams != -1][:, g_teams != -1]
+        f_q_teams = q_teams[q_teams != -1]
+        f_g_teams = g_teams[g_teams != -1]
+        f_q_camids = q_camids[q_teams != -1]
+        f_g_camids = g_camids[g_teams != -1]
         eval_metrics = metrics.evaluate_rank(
-            distmat,
-            q_teams,
-            g_teams,
-            q_camids,
-            g_camids,
-            q_anns=q_anns,
-            g_anns=g_anns,
+            f_distmat,
+            f_q_teams,
+            f_g_teams,
+            f_q_camids,
+            f_g_camids,
+            q_anns=None,
+            g_anns=None,
             eval_metric=eval_metric,
             max_rank=np.array(ranks).max(),
         )
