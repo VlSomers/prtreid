@@ -9,6 +9,7 @@ from tqdm import tqdm
 from pathlib import Path
 import pickle
 
+from ...losses import CrossEntropyLoss
 from ..engine import Engine
 from ... import metrics
 from ...losses.GiLt_loss import GiLtLoss
@@ -106,6 +107,7 @@ class ImagePartBasedEngine(Engine):
         )
 
         self.role_loss = FocalLoss()
+        # self.role_loss = CrossEntropyLoss(label_smooth=True)
 
         self.body_part_attention_loss = BodyPartAttentionLoss(
             loss_type=self.config.loss.part_based.ppl, use_gpu=self.use_gpu
