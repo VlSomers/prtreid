@@ -77,7 +77,7 @@ class GiLtLoss(nn.Module):
             if mode == 1 and key != 'globl': continue
             loss_info = OrderedDict() if key not in loss_summary else loss_summary[key]
             tr_w = self.losses_weights[key]['tr']
-            if tr_w > 0 and mode == 1:
+            if tr_w > 0:
                 parts_triplet_loss, parts_trivial_triplets_ratio, parts_valid_triplets_ratio = \
                     self.compute_triplet_loss(embeddings_dict[key], visibility_scores_dict[key], pids)
                 losses.append((tr_w, parts_triplet_loss))
