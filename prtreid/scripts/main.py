@@ -255,7 +255,9 @@ def build_torchreid_model_engine(cfg):
     )
     if cfg.project.verbose:
         print('Model complexity: params={:,} flops={:,}'.format(num_params, flops))
-    if cfg.model.load_weights and check_isfile(cfg.model.load_weights):
+    if cfg.model.load_weights:
+        assert check_isfile(cfg.model.load_weights), \
+            'Weight file not found at {}'.format(cfg.model.load_weights)
         load_pretrained_weights(model, cfg.model.load_weights)
     if cfg.use_gpu:
         model = nn.DataParallel(model).cuda()
