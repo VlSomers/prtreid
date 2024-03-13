@@ -95,7 +95,9 @@ class FeatureExtractor(object):
             print('- params: {:,}'.format(num_params))
             print('- flops: {:,}'.format(flops))
 
-        if model_path and check_isfile(model_path):
+        if model_path:
+            assert check_isfile(model_path), \
+                "PRTreID model weights not found at '{}'".format(model_path)
             load_pretrained_weights(model, model_path)
 
         # Build transform functions
