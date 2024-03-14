@@ -2,7 +2,12 @@
 
 -->
 
-# BPBReID: Body Part-based (Occluded) Re-Identification
+
+
+# PRTreID
+
+Based on "BPBReID: Body Part-based (Occluded) Re-Identification"
+This PRTreID repository will be updated soon with detailed instructions on how to run the model.
 
 **A strong baseline for body part-based person re-identification** 
 
