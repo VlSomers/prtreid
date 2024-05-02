@@ -19,7 +19,7 @@ The current description and code will be improved soon to ease installation, ple
 If you have any questions or need further guidance to install PRTreID, feel free to open a GitHub issue.
 
 
-![PRTreID diagram](images/prtreid.png)
+![PRTreID diagram](docs/figures/prtreid.png)
 
 **Multi-task Learning for Joint Re-identification, Team Affiliation, and Role Classification for Sports Visual Tracking** 
 
