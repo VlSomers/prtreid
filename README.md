@@ -6,6 +6,21 @@
 
 # PRTreID
 
+**Multi-task Learning for Joint Re-identification, Team Affiliation, and Role Classification for Sports Visual Tracking** 
+
+[[Paper](https://arxiv.org/abs/2401.09942)]
+
+[![arXiv](https://img.shields.io/badge/arXiv-2401.09942-<COLOR>.svg)](https://arxiv.org/abs/2401.09942) [![Hippocratic License HL3-LAW-MEDIA-MIL-SOC-SV](https://img.shields.io/static/v1?label=Hippocratic%20License&message=HL3-LAW-MEDIA-MIL-SOC-SV&labelColor=5e2751&color=bc8c3d)](https://firstdonoharm.dev/version/3/0/law-media-mil-soc-sv.html)
+
+>**[Multi-task Learning for Joint Re-identification, Team Affiliation, and Role Classification for Sports Visual Tracking, MMSports'23](https://arxiv.org/abs/2401.09942)**
+>
+>Amir M. Mansourian*, Vladimir Somers*, Christophe De Vleeschouwer, Shohreh Kasaei
+>
+>[*arxiv 2401.09942*](https://arxiv.org/abs/2401.09942)
+>
+
+![PRTreID diagram](docs/figures/prtreid.png)
+
 PRTreID is based on "[BPBReID: Body Part-based (Occluded) Re-Identification](https://github.com/VlSomers/bpbreid)": a lot of relevant information can be found in the original repository.
 This PRTreID repository will be updated soon with detailed instructions on how to run the model and download the weights.
 Compared to the original BPBreID repository, a new head was added to the [main model](prtreid/models/bpbreid.py) to predict roles, and [two new training objectives](prtreid/engine/image/part_based_engine.py) were added to train the model on team affiliation and role classification.
@@ -19,20 +34,6 @@ The current description and code will be improved soon to ease installation, ple
 If you have any questions or need further guidance to install PRTreID, feel free to open a GitHub issue.
 
 
-![PRTreID diagram](docs/figures/prtreid.png)
-
-**Multi-task Learning for Joint Re-identification, Team Affiliation, and Role Classification for Sports Visual Tracking** 
-
-[[Paper](https://arxiv.org/abs/2401.09942)]
-
-[![arXiv](https://img.shields.io/badge/arXiv-2401.09942-<COLOR>.svg)](https://arxiv.org/abs/2401.09942) [![Hippocratic License HL3-LAW-MEDIA-MIL-SOC-SV](https://img.shields.io/static/v1?label=Hippocratic%20License&message=HL3-LAW-MEDIA-MIL-SOC-SV&labelColor=5e2751&color=bc8c3d)](https://firstdonoharm.dev/version/3/0/law-media-mil-soc-sv.html)
-
->**[Multi-task Learning for Joint Re-identification, Team Affiliation, and Role Classification for Sports Visual Tracking, MMSports'23](https://arxiv.org/abs/2401.09942)**
->
->Amir M. Mansourian*, Vladimir Somers*, Christophe De Vleeschouwer, Shohreh Kasaei
->
->[*arxiv 2401.09942*](https://arxiv.org/abs/2401.09942)
->
 
 
 ## News
